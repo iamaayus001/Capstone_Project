@@ -16,10 +16,9 @@ mongoose
   .then(() => {
     console.log("DB connected succesfully....");
     app.listen(PORT, () => {
-      console.log("Server connected successfully....");
+      console.log(`Server connected successfully on port ${PORT}....`);
     });
   })
   .catch((err) => {
     console.error("DB connection unsucessful", err.message);
   });
-
