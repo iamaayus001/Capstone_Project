@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Auth Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f0f2f5;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+      }
+      .container {
+        background: #fff;
+        padding: 2rem 3rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 0.1);
+        width: 100%;
+        max-width: 400px;
+      }
+      h1 {
+        margin-bottom: 1.5rem;
+        text-align: center;
+        color: #333;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.3rem;
+        font-weight: 600;
+        color: #555;
+      }
+      input[type="text"],
+      input[type="email"],
+      input[type="password"] {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 1.25rem;
+        border: 1.8px solid #ccc;
+        border-radius: 5px;
+        font-size: 1rem;
+        transition: border-color 0.25s;
+      }
+      input[type="text"]:focus,
+      input[type="email"]:focus,
+      input[type="password"]:focus {
+        outline: none;
+        border-color: #007bff;
+      }
+      button {
+        width: 100%;
+        background-color: #007bff;
+        border: none;
+        padding: 0.65rem 0;
+        color: white;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.25s;
+      }
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+      button:hover:not(:disabled) {
+        background-color: #0056b3;
+      }
+      #toggleText {
+        margin-top: 1rem;
+        text-align: center;
+        color: #555;
+      }
+      #toggleText a {
+        color: #007bff;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      #toggleText a:hover {
+        text-decoration: underline;
+      }
+      #message {
+        margin-top: 1rem;
+        text-align: center;
+        font-weight: 600;
+      }
+      #message.error {
+        color: #dc3545;
+      }
+      #message.success {
+        color: #28a745;
+      }
+      .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #007bff;
+        border-radius: 50%;
+        width: 22px;
+        height: 22px;
+        animation: spin 1s linear infinite;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 10px;
+      }
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1 id="formTitle">Sign Up</h1>
+      <form id="authForm" autocomplete="off" novalidate>
+        <div id="nameDiv">
+          <label for="name">Name</label>
+          <input type="text" id="name" placeholder="Your full name" />
+        </div>
+
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@example.com" required />
+
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          placeholder="At least 6 characters"
+          required
+        />
+
+        <div id="passwordConfirmDiv">
+          <label for="passwordConfirm">Confirm Password</label>
+          <input
+            type="password"
+            id="passwordConfirm"
+            placeholder="Re-enter your password"
+          />
+        </div>
+
+        <button type="submit" id="submitBtn">Sign Up</button>
+
+        <p id="toggleText">
+          Already have an account? <a href="#" id="toggleLink">Login</a>
+        </p>
+      </form>
+
+      <div id="message"></div>
+    </div>
+
+    <script>
+      (() => {
+        const authForm = document.getElementById("authForm");
+        const formTitle = document.getElementById("formTitle");
+        const nameDiv = document.getElementById("nameDiv");
+        const passwordConfirmDiv =
+          document.getElementById("passwordConfirmDiv");
+        const toggleText = document.getElementById("toggleText");
+        const toggleLink = document.getElementById("toggleLink");
+        const submitBtn = document.getElementById("submitBtn");
+        const messageDiv = document.getElementById("message");
+
+        // Backend URL — update if needed
+        const API_BASE_URL = "http://localhost:3000/api/v1/users";
+
+        let isSignup = true;
+
+        function setLoading(loading) {
+          submitBtn.disabled = loading;
+          if (loading) {
+            submitBtn.textContent = "Please wait";
+            const spinner = document.createElement("span");
+            spinner.className = "loading-spinner";
+            submitBtn.appendChild(spinner);
+          } else {
+            submitBtn.textContent = isSignup ? "Sign Up" : "Login";
+          }
+        }
+
+        function showMessage(text, type = "error") {
+          messageDiv.textContent = text;
+          messageDiv.className = type;
+        }
+
+        function clearMessage() {
+          messageDiv.textContent = "";
+          messageDiv.className = "";
+        }
+
+        function validateEmail(email) {
+          // Simple email regex
+          return /\S+@\S+\.\S+/.test(email);
+        }
+
+        function validateForm() {
+          clearMessage();
+
+          const name = document.getElementById("name").value.trim();
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value;
+          const passwordConfirm =
+            document.getElementById("passwordConfirm").value;
+
+          if (!validateEmail(email)) {
+            showMessage("Please enter a valid email.");
+            return false;
+          }
+          if (password.length < 6) {
+            showMessage("Password must be at least 6 characters.");
+            return false;
+          }
+
+          if (isSignup) {
+            if (!name) {
+              showMessage("Please enter your name.");
+              return false;
+            }
+            if (password !== passwordConfirm) {
+              showMessage("Passwords do not match.");
+              return false;
+            }
+          }
+
+          return true;
+        }
+
+        function toggleForm() {
+          isSignup = !isSignup;
+          clearMessage();
+
+          if (isSignup) {
+            formTitle.textContent = "Sign Up";
+            submitBtn.textContent = "Sign Up";
+            toggleText.innerHTML =
+              'Already have an account? <a href="#" id="toggleLink">Login</a>';
+            nameDiv.style.display = "block";
+            passwordConfirmDiv.style.display = "block";
+          } else {
+            formTitle.textContent = "Login";
+            submitBtn.textContent = "Login";
+            toggleText.innerHTML =
+              "Don't have an account? <a href='#' id='toggleLink'>Sign Up</a>";
+            nameDiv.style.display = "none";
+            passwordConfirmDiv.style.display = "none";
+          }
+
+          // Re-attach event listener on new toggle link
+          document
+            .getElementById("toggleLink")
+            .addEventListener("click", (e) => {
+              e.preventDefault();
+              toggleForm();
+            });
+        }
+
+        authForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          if (!validateForm()) return;
+
+          clearMessage();
+          setLoading(true);
+
+          const name = document.getElementById("name").value.trim();
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value;
+          const passwordConfirm =
+            document.getElementById("passwordConfirm").value;
+
+          const endpoint = isSignup ? "signup" : "login";
+
+          let payload;
+
+          if (isSignup) {
+            payload = { name, email, password, passwordConfirm };
+          } else {
+            payload = { email, password };
+          }
+
+          try {
+            const res = await fetch(`${API_BASE_URL}/${endpoint}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+              throw new Error(
+                data.message || data.error || "Something went wrong"
+              );
+            }
+
+            // Success
+            localStorage.setItem("token", data.token);
+
+            showMessage(
+              isSignup
+                ? "Signup successful! Welcome!"
+                : "Login successful! Welcome back!",
+              "success"
+            );
+
+            // Optionally, clear form fields or redirect user
+            authForm.reset();
+          } catch (err) {
+            showMessage(err.message || "Failed to authenticate");
+          } finally {
+            setLoading(false);
+          }
+        });
+
+        // Initial setup
+        toggleForm(); // set initial state to signup
+      })();
+    </script>
+  </body>
+</html>
